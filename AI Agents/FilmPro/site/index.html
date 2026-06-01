@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FilmPro - Recomendações de filmes</title>
+    <link rel="stylesheet" href="../design/ai-social-automation.aura.build/assets/css2_19fd9cc6b396.css" />
+    <link rel="stylesheet" href="../design/ai-social-automation.aura.build/assets/css2_a7b22b336fe1.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background" aria-hidden="true">
+      <div class="stars"></div>
+      <div class="glow glow-top"></div>
+      <div class="glow glow-bottom"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="FilmPro">
+        <span class="brand-mark">
+          <i data-lucide="asterisk"></i>
+        </span>
+        <span>FilmPro</span>
+      </a>
+      <span class="status-pill" id="api-status">
+        <span class="pulse"></span>
+        <span id="api-status-text">API aguardando</span>
+      </span>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">
+            <i data-lucide="sparkles"></i>
+            Curadoria com IA
+          </span>
+          <h1 id="hero-title">Encontre seu próximo filme sem rolar por horas</h1>
+          <p>
+            Conte o clima, gênero, tema ou referência que você quer assistir. A API retorna recomendações
+            prontas em cards com elenco, nota, sinopse e plataformas.
+          </p>
+        </div>
+
+        <form class="search-panel" id="recommendation-form">
+          <label for="preferences">Preferências do filme</label>
+          <div class="input-row">
+            <i data-lucide="search"></i>
+            <textarea
+              id="preferences"
+              name="preferences"
+              minlength="50"
+              maxlength="100"
+              rows="3"
+              required
+              placeholder="Ex: Quero um suspense inteligente, com ritmo tenso, boa fotografia e final surpreendente."
+            ></textarea>
+          </div>
+          <div class="form-footer">
+            <span id="character-count">0/100</span>
+            <button type="submit" id="submit-button">
+              <i data-lucide="zap"></i>
+              Recomendar
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="results-section" aria-labelledby="results-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="results-title">Recomendações</h2>
+            <p id="results-summary">Os filmes indicados pela API aparecem aqui.</p>
+          </div>
+          <span class="count-badge" id="movie-count">0 filmes</span>
+        </div>
+
+        <div class="state-card" id="empty-state">
+          <i data-lucide="clapperboard"></i>
+          <p>Descreva suas preferências acima para iniciar o fluxo com a API.</p>
+        </div>
+
+        <div class="state-card hidden" id="loading-state">
+          <span class="spinner"></span>
+          <p>Consultando a API e montando sua sessão...</p>
+        </div>
+
+        <div class="state-card error hidden" id="error-state">
+          <i data-lucide="circle-alert"></i>
+          <p id="error-message"></p>
+        </div>
+
+        <div class="movie-grid" id="movie-grid"></div>
+      </section>
+    </main>
+
+    <template id="movie-card-template">
+      <article class="movie-card">
+        <div class="poster-wrap">
+          <img class="poster" alt="" />
+          <div class="poster-fallback">
+            <i data-lucide="film"></i>
+          </div>
+          <span class="rating"></span>
+        </div>
+        <div class="movie-body">
+          <div class="movie-title-row">
+            <h3></h3>
+            <span class="year"></span>
+          </div>
+          <p class="meta"></p>
+          <div class="genres"></div>
+          <p class="synopsis"></p>
+          <p class="reason"></p>
+          <div class="movie-details">
+            <span class="director"></span>
+            <span class="platforms"></span>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="../design/ai-social-automation.aura.build/assets/lucide_latest_2eebd0ebe8c2.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
