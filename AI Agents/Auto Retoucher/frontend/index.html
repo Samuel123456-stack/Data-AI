@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Retoucher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #020205; }
+
+    /* ── Glass panel ── */
+    .glass {
+      background: linear-gradient(165deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.03) 40%, rgba(255,255,255,.01) 100%);
+      backdrop-filter: blur(50px);
+      -webkit-backdrop-filter: blur(50px);
+      border: 1px solid rgba(255,255,255,.08);
+      border-top: 1px solid rgba(255,255,255,.2);
+      border-left: 1px solid rgba(255,255,255,.15);
+      box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 20px 60px -10px rgba(0,0,0,.6), inset 0 0 40px rgba(255,255,255,.02);
+    }
+
+    /* ── Scrollbar hide ── */
+    .no-sb::-webkit-scrollbar { display: none; }
+    .no-sb { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ── Subtle visible scrollbar (upload hero area + report list) ── */
+    .thin-sb { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.12) transparent; }
+    .thin-sb::-webkit-scrollbar { width: 4px; }
+    .thin-sb::-webkit-scrollbar-track { background: transparent; }
+    .thin-sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 9999px; }
+    .thin-sb::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+    /* ── Blobs ── */
+    .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; z-index: -1; animation: drift 10s infinite alternate ease-in-out; }
+    .b1 { background: #4f46e5; width: 600px; height: 600px; top: -10%; left: -10%; }
+    .b2 { background: #db2777; width: 500px; height: 500px; bottom: -10%; right: -5%; animation-delay: -5s; }
+    .b3 { background: #0ea5e9; width: 400px; height: 400px; top: 40%; left: 30%; opacity: .28; }
+    @keyframes drift { 0%{transform:translate(0,0)} 100%{transform:translate(30px,50px)} }
+
+    /* ── Text glow ── */
+    .glow { text-shadow: 0 0 40px rgba(255,255,255,.28); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideR   { from{opacity:0;transform:translateX(18px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes spin     { to{transform:rotate(360deg)} }
+    @keyframes pRing    { 0%{transform:scale(1);opacity:.75} 100%{transform:scale(2.4);opacity:0} }
+    @keyframes markerIn { from{opacity:0;transform:translate(-50%,-50%) scale(.3)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+
+    .au   { animation: fadeUp  .45s cubic-bezier(.16,1,.3,1) both; }
+    .sr   { animation: slideR  .4s  cubic-bezier(.16,1,.3,1) both; }
+    .spin { animation: spin    .75s linear infinite; }
+
+    /* ── Dropzone ── */
+    .dz {
+      border: 2px dashed rgba(255,255,255,.1);
+      transition: border-color .3s, background .3s, box-shadow .3s;
+    }
+    .dz:hover, .dz.over {
+      border-color: rgba(99,102,241,.65);
+      background: rgba(99,102,241,.05);
+      box-shadow: 0 0 60px -15px rgba(99,102,241,.45);
+    }
+    .dz.has-file {
+      border-color: rgba(255,255,255,.15);
+      border-style: solid;
+    }
+
+    /* ── Markers ── */
+    .mk {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      transform: translate(-50%,-50%);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font: 700 9px/1 'Space Mono', monospace;
+      color: #fff;
+      z-index: 10;
+      border: 1.5px solid rgba(255,255,255,.35);
+      transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, z-index 0s;
+      animation: markerIn .35s cubic-bezier(.16,1,.3,1) both;
+    }
+    .mk span { position: relative; z-index: 2; }
+    .mk:hover, .mk.lit {
+      transform: translate(-50%,-50%) scale(1.5);
+      z-index: 30;
+    }
+    /* Relevance colours */
+    .mk.ess  { background: rgba(239,68,68,.88);  box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 18px rgba(239,68,68,.65); }
+    .mk.rec  { background: rgba(245,158,11,.88); box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 18px rgba(245,158,11,.65); }
+    .mk.opt  { background: rgba(16,185,129,.88); box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 18px rgba(16,185,129,.65); }
+    .mk.lit.ess  { box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 30px rgba(239,68,68,.9); }
+    .mk.lit.rec  { box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 30px rgba(245,158,11,.9); }
+    .mk.lit.opt  { box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 30px rgba(16,185,129,.9); }
+    /* Pulse ring for ESSENCIAL */
+    .mk.ess::before {
+      content: '';
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(239,68,68,.4);
+      animation: pRing 2s cubic-bezier(.455,.03,.515,.955) infinite;
+    }
+
+    /* ── Tooltip ── */
+    .tip {
+      position: absolute;
+      min-width: 240px; max-width: 300px;
+      z-index: 60;
+      pointer-events: none;
+    }
+    .tip-box {
+      background: linear-gradient(165deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.05) 100%);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid rgba(255,255,255,.14);
+      border-top: 1px solid rgba(255,255,255,.24);
+      box-shadow: 0 20px 50px -8px rgba(0,0,0,.75);
+      border-radius: 1.25rem;
+      padding: 1rem 1.1rem;
+    }
+
+    /* ── Report item ── */
+    .ri {
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.055);
+      border-radius: .875rem;
+      padding: .875rem 1rem;
+      cursor: pointer;
+      transition: background .22s, border-color .22s;
+    }
+    .ri:hover, .ri.lit {
+      background: rgba(255,255,255,.065);
+      border-color: rgba(255,255,255,.12);
+    }
+
+    /* ── Filter pill ── */
+    .fp {
+      padding: .35rem .9rem;
+      border-radius: 9999px;
+      font: 400 11px/1 'Space Mono', monospace;
+      color: rgba(255,255,255,.45);
+      cursor: pointer;
+      transition: background .2s, color .2s, box-shadow .2s;
+      flex-shrink: 0;
+    }
+    .fp.on {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.3);
+    }
+    .fp:not(.on):hover { background: rgba(255,255,255,.05); color: rgba(255,255,255,.8); }
+  </style>
+</head>
+<body class="h-screen overflow-hidden relative selection:bg-indigo-500/30">
+
+  <!-- ── Backgrounds ── -->
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div class="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150 contrast-150 pointer-events-none mix-blend-overlay"></div>
+  <div class="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none"></div>
+
+  <!-- ── Outer wrapper ── -->
+  <div class="relative w-full h-full flex items-center justify-center p-4 sm:p-8">
+    <div class="glass w-full max-w-[1420px] h-[94vh] rounded-[3rem] relative overflow-hidden flex flex-col">
+
+      <!-- Inner shimmer -->
+      <div class="absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-transparent pointer-events-none z-0"></div>
+
+      <!-- ════════════════════════════════
+           UPLOAD VIEW
+      ════════════════════════════════ -->
+      <div id="vUpload" class="relative z-10 flex flex-col h-full">
+        <!-- Header -->
+        <header class="flex-shrink-0 flex items-center justify-between px-8 sm:px-14 pt-8">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,.3)]">
+              <iconify-icon icon="solar:magic-stick-3-linear" class="text-black" width="20"></iconify-icon>
+            </div>
+            <span class="text-white font-medium tracking-tight">Auto Retoucher</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(99,102,241,.8)]"></div>
+            <span class="text-[10px] font-mono text-indigo-400/80 tracking-widest uppercase">IA para Fotografia</span>
+          </div>
+        </header>
+
+        <!-- Hero centre — scrollable so the CTA stays reachable after preview -->
+        <div class="flex-1 overflow-y-auto thin-sb px-6 sm:px-12">
+          <div class="min-h-full flex items-center justify-center py-8">
+          <div class="w-full max-w-[520px]">
+
+            <!-- Heading -->
+            <div class="text-center mb-8">
+              <span class="au inline-block px-3 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-300 text-[10px] font-mono tracking-widest uppercase mb-5" style="animation-delay:.05s">
+                Análise inteligente de retoques
+              </span>
+              <h1 class="au text-4xl sm:text-[2.8rem] text-white font-medium tracking-tighter glow leading-[1.1] mb-3" style="animation-delay:.1s">
+                Retoques perfeitos,<br/>coordenadas precisas.
+              </h1>
+              <p class="au text-white/60 text-sm font-light leading-relaxed" style="animation-delay:.15s">
+                Carregue um retrato e a IA detecta cada ponto de melhoria,<br class="hidden sm:block"/>sugerindo técnicas exatas no Photoshop.
+              </p>
+            </div>
+
+            <!-- Dropzone -->
+            <div id="dz" class="au dz rounded-3xl p-9 text-center cursor-pointer mb-4" style="animation-delay:.2s">
+              <!-- Default prompt -->
+              <div id="dzP">
+                <div class="w-14 h-14 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                  <iconify-icon icon="solar:upload-minimalistic-linear" class="text-white/45" width="26"></iconify-icon>
+                </div>
+                <p class="text-white/65 text-sm font-medium mb-1">Arraste e solte sua foto aqui</p>
+                <p class="text-white/25 text-xs font-mono">ou clique para selecionar &nbsp;·&nbsp; JPG · PNG · WEBP</p>
+              </div>
+              <!-- Preview -->
+              <div id="dzPrev" class="hidden">
+                <img id="prevImg" class="max-h-48 mx-auto rounded-xl object-contain mb-3 shadow-2xl" />
+                <p id="prevName" class="text-white/45 text-xs font-mono mb-1 truncate"></p>
+                <p class="text-white/22 text-xs">Clique para trocar a imagem</p>
+              </div>
+            </div>
+
+            <input id="fi" type="file" class="hidden" accept="image/*" />
+
+            <!-- Error box -->
+            <div id="errBox" class="hidden bg-rose-500/[0.08] border border-rose-500/25 rounded-2xl px-4 py-3 mb-4 flex items-start gap-3">
+              <iconify-icon icon="solar:danger-triangle-linear" class="text-rose-400 flex-shrink-0 mt-0.5" width="18"></iconify-icon>
+              <p id="errMsg" class="text-rose-300 text-sm leading-relaxed"></p>
+            </div>
+
+            <!-- CTA button -->
+            <button id="analyzeBtn"
+              class="au w-full py-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white text-sm font-medium transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled style="animation-delay:.25s">
+              <iconify-icon icon="solar:magic-stick-3-linear" width="17"></iconify-icon>
+              <span id="btnLabel">Analisar Foto</span>
+            </button>
+
+          </div>
+          </div><!-- /min-h-full aligner -->
+        </div><!-- /hero scroll area -->
+
+        <!-- Footer -->
+        <div class="flex-shrink-0 pb-5 flex items-center justify-center gap-8">
+          <span class="text-[9px] font-mono text-white/15 uppercase tracking-widest">Auto Retoucher · IA para Fotografia Profissional</span>
+        </div>
+      </div><!-- /vUpload -->
+
+
+      <!-- ════════════════════════════════
+           LOADING OVERLAY
+      ════════════════════════════════ -->
+      <div id="vLoad" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center rounded-[3rem] bg-[#020205]/65 backdrop-blur-lg">
+        <div class="relative mb-6">
+          <svg class="spin w-16 h-16" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="26" stroke="rgba(255,255,255,.07)" stroke-width="4"/>
+            <path d="M32 6A26 26 0 0158 32" stroke="#4f46e5" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <iconify-icon icon="solar:magic-stick-3-linear" class="text-indigo-400" width="22"></iconify-icon>
+          </div>
+        </div>
+        <p class="text-white font-medium text-lg mb-2">Analisando sua foto...</p>
+        <p id="loadMsg" class="text-white/35 text-sm font-mono transition-all duration-500">Detectando pontos de retoque</p>
+        <div class="flex items-center gap-1.5 mt-5 opacity-40">
+          <div class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce" style="animation-delay:0s"></div>
+          <div class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce" style="animation-delay:.2s"></div>
+          <div class="w-1 h-1 rounded-full bg-indigo-400 animate-bounce" style="animation-delay:.4s"></div>
+        </div>
+      </div>
+
+
+      <!-- ════════════════════════════════
+           RESULTS VIEW
+      ════════════════════════════════ -->
+      <div id="vResults" class="hidden relative z-10 flex flex-col h-full min-h-0">
+
+        <!-- Results header -->
+        <header class="flex-shrink-0 flex items-center justify-between px-6 sm:px-8 py-4 border-b border-white/[0.06]">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 bg-white rounded-[.6rem] flex items-center justify-center shadow-[0_0_16px_rgba(255,255,255,.25)] flex-shrink-0">
+              <iconify-icon icon="solar:magic-stick-3-linear" class="text-black" width="16"></iconify-icon>
+            </div>
+            <span class="text-white font-medium tracking-tight flex-shrink-0">Auto Retoucher</span>
+            <div class="w-px h-4 bg-white/10 flex-shrink-0"></div>
+            <span id="rFilename" class="text-white/30 text-xs font-mono truncate"></span>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="hidden sm:flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)] animate-pulse"></div>
+              <span class="text-[10px] font-mono text-emerald-400/80 tracking-widest uppercase">Análise Completa</span>
+            </div>
+            <button id="newBtn"
+              class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] hover:border-white/[0.15] text-white text-xs font-medium transition-all">
+              <iconify-icon icon="solar:restart-linear" width="14"></iconify-icon>
+              Nova Análise
+            </button>
+          </div>
+        </header>
+
+        <!-- Two-column body -->
+        <div class="flex-1 min-h-0 flex">
+
+          <!-- Left: image panel
+               imgCont is inline-block so it shrink-wraps the image exactly.
+               Markers use simple % positioning — no letterbox math needed. -->
+          <div class="flex-1 min-w-0 overflow-hidden p-2 sm:p-3 flex items-center justify-center" id="imgPanel">
+            <div class="relative" id="imgCont" style="display:inline-block;max-width:100%;">
+              <img id="rImg" class="block rounded-2xl shadow-[0_0_50px_rgba(0,0,0,.55)]"
+                   style="max-width:100%;max-height:calc(94vh - 80px);width:auto;height:auto;" />
+              <!-- Tooltip (inside image container) -->
+              <div id="tip" class="tip hidden">
+                <div class="tip-box">
+                  <div class="flex items-center justify-between gap-3 mb-2.5">
+                    <span id="tipBadge" class="text-[10px] font-mono px-2 py-0.5 rounded border"></span>
+                    <span id="tipNum" class="text-[10px] font-mono text-white/22"></span>
+                  </div>
+                  <p id="tipDesc" class="text-white/72 text-sm leading-relaxed mb-3"></p>
+                  <div class="border-t border-white/[0.07] pt-2.5">
+                    <p class="text-white/22 text-[9px] font-mono uppercase tracking-widest mb-1">Técnica Photoshop</p>
+                    <p id="tipTech" class="text-white/50 text-[11px] font-mono leading-relaxed"></p>
+                  </div>
+                </div>
+              </div>
+              <!-- Markers injected by JS -->
+            </div>
+          </div>
+
+          <!-- Right: report panel -->
+          <div class="w-[350px] xl:w-[390px] flex-shrink-0 border-l border-white/[0.06] flex flex-col min-h-0 bg-black/[0.08]">
+
+            <!-- Filter tabs -->
+            <div class="flex-shrink-0 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+              <p class="text-[9px] font-mono text-white/22 uppercase tracking-widest mb-2.5">Filtrar por prioridade</p>
+              <div class="flex items-center gap-0.5 bg-white/[0.04] p-1 rounded-full border border-white/[0.07]">
+                <button class="fp on" data-f="ALL">Todos</button>
+                <button class="fp" data-f="ESSENCIAL">Essencial</button>
+                <button class="fp" data-f="RECOMENDADO">Recom.</button>
+                <button class="fp" data-f="OPCIONAL">Opcional</button>
+              </div>
+            </div>
+
+            <!-- Summary counts -->
+            <div class="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 border-b border-white/[0.06]">
+              <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                <span id="cE" class="text-[10px] font-mono text-white/30">0 Essencial</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                <span id="cR" class="text-[10px] font-mono text-white/30">0 Recom.</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <span id="cO" class="text-[10px] font-mono text-white/30">0 Opcional</span>
+              </div>
+              <span id="cTot" class="text-[10px] font-mono text-white/18 ml-auto"></span>
+            </div>
+
+            <!-- Report list -->
+            <div id="rList" class="flex-1 overflow-y-auto thin-sb p-3 space-y-2"></div>
+
+          </div><!-- /report panel -->
+
+        </div><!-- /body -->
+      </div><!-- /vResults -->
+
+    </div><!-- /glass panel -->
+  </div><!-- /outer -->
+
+  <script>
+    // ══════════════════════════════════════════
+    //  State
+    // ══════════════════════════════════════════
+    let file = null, data = null, filter = 'ALL', loadTimer = null;
+
+    // ══════════════════════════════════════════
+    //  DOM refs
+    // ══════════════════════════════════════════
+    const vUpload    = document.getElementById('vUpload');
+    const vLoad      = document.getElementById('vLoad');
+    const vResults   = document.getElementById('vResults');
+    const dz         = document.getElementById('dz');
+    const fi         = document.getElementById('fi');
+    const dzP        = document.getElementById('dzP');
+    const dzPrev     = document.getElementById('dzPrev');
+    const prevImg    = document.getElementById('prevImg');
+    const prevName   = document.getElementById('prevName');
+    const errBox     = document.getElementById('errBox');
+    const errMsg     = document.getElementById('errMsg');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const btnLabel   = document.getElementById('btnLabel');
+    const loadMsg    = document.getElementById('loadMsg');
+    const rImg       = document.getElementById('rImg');
+    const imgCont    = document.getElementById('imgCont');
+    const rFilename  = document.getElementById('rFilename');
+    const rList      = document.getElementById('rList');
+    const tip        = document.getElementById('tip');
+    const newBtn     = document.getElementById('newBtn');
+
+    // ══════════════════════════════════════════
+    //  Dropzone
+    // ══════════════════════════════════════════
+    dz.addEventListener('click', () => fi.click());
+    dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('over');
+      const f = e.dataTransfer.files[0];
+      if (f?.type.startsWith('image/')) setFile(f);
+    });
+    fi.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+
+    function setFile(f) {
+      file = f; clearErr();
+      const r = new FileReader();
+      r.onload = ev => {
+        prevImg.src = ev.target.result;
+        prevName.textContent = f.name;
+        dzP.classList.add('hidden');
+        dzPrev.classList.remove('hidden');
+        dz.classList.add('has-file');
+      };
+      r.readAsDataURL(f);
+      analyzeBtn.disabled = false;
+    }
+
+    // ══════════════════════════════════════════
+    //  Analyze
+    // ══════════════════════════════════════════
+    analyzeBtn.addEventListener('click', doAnalyze);
+
+    async function doAnalyze() {
+      if (!file) return;
+      clearErr(); showLoad();
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/analyze', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+          throw new Error(e.detail || 'Erro desconhecido');
+        }
+        data = await res.json();
+        showResults();
+      } catch (e) {
+        hideLoad();
+        showErr(e.message);
+      }
+    }
+
+    // ══════════════════════════════════════════
+    //  Loading overlay
+    // ══════════════════════════════════════════
+    const loadMsgs = [
+      'Detectando pontos de retoque...',
+      'Analisando textura da pele...',
+      'Calculando coordenadas precisas...',
+      'Gerando relatório de retoques...',
+      'Classificando prioridades...',
+    ];
+    function showLoad() {
+      vLoad.classList.remove('hidden');
+      analyzeBtn.disabled = true;
+      let i = 0;
+      loadTimer = setInterval(() => {
+        i = (i + 1) % loadMsgs.length;
+        loadMsg.textContent = loadMsgs[i];
+      }, 1900);
+    }
+    function hideLoad() {
+      vLoad.classList.add('hidden');
+      clearInterval(loadTimer);
+      analyzeBtn.disabled = !file;
+    }
+
+    // ══════════════════════════════════════════
+    //  Show results
+    // ══════════════════════════════════════════
+    function showResults() {
+      hideLoad();
+      rFilename.textContent = file.name;
+      vUpload.classList.add('hidden');
+      vResults.classList.remove('hidden');
+      vResults.style.animation = 'fadeUp .45s cubic-bezier(.16,1,.3,1) both';
+
+      renderStats();
+      setFilter('ALL');
+
+      rImg.src = data.image_url;
+      if (rImg.complete && rImg.naturalHeight) {
+        buildMarkers();
+      } else {
+        rImg.onload = buildMarkers;
+        rImg.onerror = () => console.warn('Imagem não carregada, marcadores podem estar ausentes.');
+      }
+    }
+
+    // ══════════════════════════════════════════
+    //  New analysis
+    // ══════════════════════════════════════════
+    newBtn.addEventListener('click', () => {
+      data = null; file = null; filter = 'ALL'; fi.value = '';
+      imgCont.querySelectorAll('.mk').forEach(m => m.remove());
+      dzP.classList.remove('hidden');
+      dzPrev.classList.add('hidden');
+      dz.classList.remove('has-file');
+      analyzeBtn.disabled = true;
+      clearErr();
+      document.querySelectorAll('.fp').forEach(b => b.classList.remove('on'));
+      document.querySelector('.fp[data-f="ALL"]').classList.add('on');
+      vResults.classList.add('hidden');
+      vResults.style.animation = '';
+      vUpload.classList.remove('hidden');
+      vUpload.style.animation = 'fadeUp .45s cubic-bezier(.16,1,.3,1) both';
+    });
+
+    // ══════════════════════════════════════════
+    //  Relevance config
+    // ══════════════════════════════════════════
+    const CFG = {
+      ESSENCIAL:   { label: 'ESSENCIAL',   mc: 'ess', badge: 'text-rose-300 bg-rose-500/10 border-rose-500/30',     dot: 'bg-rose-500',    dot2: 'bg-rose-500/15',    num: 'text-rose-400'   },
+      RECOMENDADO: { label: 'RECOMENDADO', mc: 'rec', badge: 'text-amber-300 bg-amber-500/10 border-amber-500/30',   dot: 'bg-amber-500',   dot2: 'bg-amber-500/15',   num: 'text-amber-400'  },
+      OPCIONAL:    { label: 'OPCIONAL',    mc: 'opt', badge: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30', dot: 'bg-emerald-500', dot2: 'bg-emerald-500/15', num: 'text-emerald-400'},
+    };
+    const cfg = r => CFG[r] || CFG.OPCIONAL;
+
+    // ══════════════════════════════════════════
+    //  Stats
+    // ══════════════════════════════════════════
+    function renderStats() {
+      const r = data.report;
+      const e  = r.filter(x => x.relevance === 'ESSENCIAL').length;
+      const rc = r.filter(x => x.relevance === 'RECOMENDADO').length;
+      const o  = r.filter(x => x.relevance === 'OPCIONAL').length;
+      document.getElementById('cE').textContent   = `${e} Essencial`;
+      document.getElementById('cR').textContent   = `${rc} Recom.`;
+      document.getElementById('cO').textContent   = `${o} Opcional`;
+      document.getElementById('cTot').textContent = `${r.length} total`;
+    }
+
+    // ══════════════════════════════════════════
+    //  Filter
+    // ══════════════════════════════════════════
+    document.querySelectorAll('.fp').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fp').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        if (data) setFilter(btn.dataset.f);
+      });
+    });
+
+    function setFilter(f) {
+      filter = f;
+      renderList(f);
+    }
+
+    // ══════════════════════════════════════════
+    //  Report list
+    // ══════════════════════════════════════════
+    function renderList(f) {
+      rList.innerHTML = '';
+      const items = f === 'ALL' ? data.report : data.report.filter(x => x.relevance === f);
+
+      if (!items.length) {
+        rList.innerHTML = `
+          <div class="py-12 text-center">
+            <iconify-icon icon="solar:check-circle-linear" class="text-white/15" width="28"></iconify-icon>
+            <p class="text-white/20 text-xs font-mono mt-3">Nenhum item nesta categoria</p>
+          </div>`;
+        return;
+      }
+
+      items.forEach((item, li) => {
+        const gi = data.report.indexOf(item);
+        const c  = cfg(item.relevance);
+
+        const card = document.createElement('div');
+        card.className = 'ri sr';
+        card.style.animationDelay = `${li * 0.05}s`;
+        card.dataset.gi = gi;
+
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full ${c.dot2} flex items-center justify-center flex-shrink-0 mt-0.5 border border-white/5">
+              <span class="${c.num} text-[9px] font-mono font-bold">${gi + 1}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="inline-block text-[9px] font-mono px-1.5 py-0.5 rounded border ${c.badge} mb-2">${c.label}</span>
+              <p class="text-white/60 text-[11.5px] leading-relaxed mb-2.5">${item.description}</p>
+              <div class="border-t border-white/[0.06] pt-2">
+                <p class="text-white/18 text-[8.5px] font-mono uppercase tracking-widest mb-1">Técnica Photoshop</p>
+                <p class="text-white/38 text-[10.5px] font-mono leading-relaxed">${item.photoshop_technique}</p>
+              </div>
+            </div>
+          </div>`;
+
+        card.addEventListener('mouseenter', () => activate(gi));
+        card.addEventListener('mouseleave', () => activate(-1));
+        card.addEventListener('click',      () => focusMarker(gi));
+        rList.appendChild(card);
+      });
+    }
+
+    // ══════════════════════════════════════════
+    //  Markers
+    //  imgCont is inline-block and shrink-wraps the
+    //  image exactly, so x_point/y_point (0–1) map
+    //  directly to percentage positions — no letterbox
+    //  math required.
+    // ══════════════════════════════════════════
+    // Normalize a coordinate that may be 0-1 (already normalised)
+    // or a raw pixel value (> 1). In the pixel case we divide by the
+    // corresponding image dimension so the result is always in [0, 1].
+    function normCoord(val, imgDim) {
+      if (val <= 1.0) return Math.max(0, val);           // already normalised
+      return Math.max(0, Math.min(1, val / (imgDim || 1))); // pixel → normalised
+    }
+
+    function buildMarkers() {
+      imgCont.querySelectorAll('.mk').forEach(m => m.remove());
+      const nw = rImg.naturalWidth  || 1;
+      const nh = rImg.naturalHeight || 1;
+      data.report.forEach((item, i) => {
+        const c  = cfg(item.relevance);
+        const m  = document.createElement('div');
+        m.className = `mk ${c.mc}`;
+        const xp = normCoord(item.x_point, nw);
+        const yp = normCoord(item.y_point, nh);
+        // % of imgCont == % of rendered image (no letterboxing)
+        m.style.left = `${xp * 100}%`;
+        m.style.top  = `${yp * 100}%`;
+        m.style.animationDelay = `${i * 0.07}s`;
+        m.dataset.i  = i;
+        m.innerHTML  = `<span>${i + 1}</span>`;
+        m.addEventListener('mouseenter', ev => { activate(i); showTip(item, i, ev); });
+        m.addEventListener('mousemove',  ev => moveTip(ev));
+        m.addEventListener('mouseleave', ()  => { activate(-1); hideTip(); });
+        imgCont.appendChild(m);
+      });
+    }
+
+    // ══════════════════════════════════════════
+    //  Active state (cross-highlight)
+    // ══════════════════════════════════════════
+    function activate(idx) {
+      imgCont.querySelectorAll('.mk').forEach(m  => m.classList.toggle('lit', +m.dataset.i === idx));
+      rList.querySelectorAll('.ri').forEach(card => card.classList.toggle('lit', +card.dataset.gi === idx));
+      if (idx >= 0) {
+        const ri = rList.querySelector(`.ri[data-gi="${idx}"]`);
+        if (ri) ri.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function focusMarker(idx) {
+      const m = imgCont.querySelector(`.mk[data-i="${idx}"]`);
+      if (m) m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ══════════════════════════════════════════
+    //  Tooltip
+    // ══════════════════════════════════════════
+    function showTip(item, idx, ev) {
+      const c = cfg(item.relevance);
+      const badge = document.getElementById('tipBadge');
+      badge.className = `text-[10px] font-mono px-2 py-0.5 rounded border ${c.badge}`;
+      badge.textContent = c.label;
+      document.getElementById('tipNum').textContent  = `#${idx + 1}`;
+      document.getElementById('tipDesc').textContent = item.description;
+      document.getElementById('tipTech').textContent = item.photoshop_technique;
+      tip.classList.remove('hidden');
+      moveTip(ev);
+    }
+
+    function moveTip(ev) {
+      // Position relative to image container
+      const cr = imgCont.getBoundingClientRect();
+      // Get tooltip size (may be 0 if first render; use fallback)
+      const tw = tip.offsetWidth  || 260;
+      const th = tip.offsetHeight || 180;
+      let lx = ev.clientX - cr.left + 20;
+      let ty = ev.clientY - cr.top  - 20;
+      // Flip horizontally if overflowing right
+      if (lx + tw > cr.width - 8) lx = ev.clientX - cr.left - tw - 20;
+      // Flip vertically if overflowing bottom
+      if (ty + th > cr.height - 8) ty = ev.clientY - cr.top - th - 10;
+      // Clamp top
+      if (ty < 5) ty = 5;
+      // Clamp left
+      if (lx < 5) lx = 5;
+      tip.style.left = `${lx}px`;
+      tip.style.top  = `${ty}px`;
+    }
+
+    function hideTip() { tip.classList.add('hidden'); }
+
+    // ══════════════════════════════════════════
+    //  Error helpers
+    // ══════════════════════════════════════════
+    function showErr(msg) { errMsg.textContent = msg; errBox.classList.remove('hidden'); }
+    function clearErr()   { errBox.classList.add('hidden'); }
+
+  </script>
+</body>
+</html>
